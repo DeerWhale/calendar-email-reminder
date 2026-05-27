@@ -13,6 +13,7 @@ wheels/
 cron.log
 token.json
 credentials.json
+.sent_notifications.json
 .env
 
 # Testing
