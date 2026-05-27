@@ -1,5 +1,6 @@
 """Google Calendar authentication and API interaction."""
 
+import logging
 import os.path
 import pickle
 from datetime import datetime, timedelta
@@ -10,6 +11,8 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
+
+logger = logging.getLogger(__name__)
 
 # If modifying these scopes, delete the file token.json.
 SCOPES = ['https://www.googleapis.com/auth/calendar.readonly']
@@ -47,7 +50,7 @@ def get_calendar_service():
         service = build('calendar', 'v3', credentials=creds)
         return service
     except HttpError as error:
-        print(f'An error occurred: {error}')
+        logger.error(f"Failed to build calendar service: {error}")
         return None
 
 
@@ -99,7 +102,7 @@ def get_red_events_in_next_10_minutes(service, calendar_id: str = 'primary') -> 
         return red_events
     
     except HttpError as error:
-        print(f'An error occurred while fetching events: {error}')
+        logger.error(f"Failed to fetch calendar events: {error}")
         return []
 
 

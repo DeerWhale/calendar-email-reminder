@@ -1,12 +1,28 @@
 """Main script for calendar email reminder system."""
 
 import json
+import logging
 import os
+import sys
 from datetime import datetime
+
 from dotenv import load_dotenv
 
 from calendar_auth import get_calendar_service, get_red_events_in_next_10_minutes
 from email_sender import send_reminder_email
+
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(log_level: str = "INFO") -> None:
+    """Configure logging for the application."""
+    logging.basicConfig(
+        level=getattr(logging, log_level.upper()),
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.StreamHandler(sys.stdout),
+        ],
+    )
 
 
 def load_sent_notifications(notification_file: str) -> dict:
@@ -45,9 +61,14 @@ def create_event_key(event_id: str, start_time: str) -> str:
 
 def main():
     """Main function to check calendar and send reminders."""
-    print("=" * 60)
-    print("Calendar Email Reminder - Running at:", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-    print("=" * 60)
+    # Setup logging
+    setup_logging(os.getenv("LOG_LEVEL", "INFO"))
+
+    logger.info("=" * 60)
+    logger.info(
+        f"Calendar Email Reminder - Running at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+    )
+    logger.info("=" * 60)
     
     # Load environment variables
     load_dotenv()
@@ -60,8 +81,10 @@ def main():
     
     # Validate configuration
     if not all([gmail_address, gmail_password, recipient_email]):
-        print("❌ Error: Missing email configuration in .env file")
-        print("Please ensure GMAIL_ADDRESS, GMAIL_APP_PASSWORD, and RECIPIENT_EMAIL are set.")
+        logger.error("Missing email configuration in .env file")
+        logger.error(
+            "Please ensure GMAIL_ADDRESS, GMAIL_APP_PASSWORD, and RECIPIENT_EMAIL are set."
+        )
         return
     
     # Load notification history
@@ -72,26 +95,26 @@ def main():
     try:
         service = get_calendar_service()
         if not service:
-            print("❌ Error: Failed to authenticate with Google Calendar")
+            logger.error("Failed to authenticate with Google Calendar")
             return
     except FileNotFoundError as e:
-        print(f"❌ Error: {e}")
-        print("Please follow the setup instructions in README.md")
+        logger.error(f"Credentials file not found: {e}")
+        logger.error("Please follow the setup instructions in README.md")
         return
     except Exception as e:
-        print(f"❌ Error during authentication: {e}")
+        logger.error(f"Error during authentication: {e}")
         return
     
     # Fetch red events in next 7-12 minutes
-    print("\n🔍 Checking for red-tagged events in the next 7-12 minutes...")
+    logger.info("Checking for red-tagged events in the next 7-12 minutes...")
     red_events = get_red_events_in_next_10_minutes(service, calendar_id)
     
     if not red_events:
-        print("✓ No red-tagged events found in the next 7-12 minutes.")
+        logger.info("No red-tagged events found in the next 7-12 minutes.")
         save_sent_notifications(notification_file, sent_notifications)
         return
-    
-    print(f"📌 Found {len(red_events)} red-tagged event(s)")
+
+    logger.info(f"Found {len(red_events)} red-tagged event(s)")
     
     # Process each event
     events_processed = 0
@@ -104,11 +127,11 @@ def main():
         
         # Check if we've already sent a notification for this event at this time
         if event_key in sent_notifications:
-            print(f"⊘ Skipping '{event['summary']}' - notification already sent")
+            logger.debug(f"Skipping '{event['summary']}' - notification already sent")
             continue
         
         events_processed += 1
-        print(f"\n📧 Processing: {event['summary']}")
+        logger.info(f"Processing event: {event['summary']}")
         
         # Send reminder email
         success = send_reminder_email(
@@ -125,9 +148,10 @@ def main():
     
     # Save updated notification history
     save_sent_notifications(notification_file, sent_notifications)
-    
-    print("\n" + "=" * 60)
-    print(f"✓ Summary: Processed {events_processed} event(s), sent {emails_sent} email(s)")
+
+    logger.info("=" * 60)
+    logger.info(f"Summary: Processed {events_processed} event(s), sent {emails_sent} email(s)")
+    logger.info("=" * 60)
     print("=" * 60)
 
 

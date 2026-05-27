@@ -1,9 +1,12 @@
 """Email sending functionality using Gmail SMTP."""
 
+import logging
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from typing import Dict
+
+logger = logging.getLogger(__name__)
 
 
 def send_reminder_email(
@@ -54,10 +57,10 @@ Automated reminder from Calendar Email Reminder
         with smtplib.SMTP_SSL('smtp.gmail.com', 465) as server:
             server.login(sender_email, sender_password)
             server.send_message(message)
-        
-        print(f"✓ Email sent for event: {event['summary']}")
+
+        logger.info(f"Email sent successfully for event: {event['summary']}")
         return True
     
     except Exception as e:
-        print(f"✗ Failed to send email for event '{event['summary']}': {e}")
+        logger.error(f"Failed to send email for event '{event['summary']}': {e}")
         return False
